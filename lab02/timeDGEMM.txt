@@ -1,0 +1,10 @@
+  16 x   16	time used: 0.000011s	Gflops: 0.744727	naive
+  16 x   16	time used: 0.000536s	Gflops: 0.015284	cblas
+  64 x   64	time used: 0.000924s	Gflops: 0.567411	naive
+  64 x   64	time used: 0.000072s	Gflops: 7.281778	cblas
+ 256 x  256	time used: 0.074624s	Gflops: 0.449647	naive
+ 256 x  256	time used: 0.002355s	Gflops: 14.248166	cblas
+1024 x 1024	time used: 5.105453s	Gflops: 0.420625	naive
+1024 x 1024	time used: 0.019926s	Gflops: 107.772942	cblas
+2048 x 2048	time used: 158.212595s	Gflops: 0.108587	naive
+2048 x 2048	time used: 0.098664s	Gflops: 174.125002	cblas
