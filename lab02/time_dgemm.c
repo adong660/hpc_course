@@ -22,8 +22,11 @@ void update_records(int m, double duration, char *comment) {
         exit(1);
     }
     double gflops = (2l*m*m*m) / duration / 1.0e9;
-    fprintf(file, "%4d x %4d\ttime used: %lfs\tGflops: %lf\t%s\n",
+    char record[100];
+    snprintf(record, 100, "%4d x %4d\ttime used: %lfs\tGflops: %lf\t%s\n",
             m, m, duration, gflops, comment);
+    fputs(record, file);
+    printf("%s", record);
     fclose(file);
     return;
 }
@@ -39,15 +42,15 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    long size = m * m;
-    double *arrA = malloc(sizeof(double) * size);
-    double *arrB = malloc(sizeof(double) * size);
-    double *arrC = malloc(sizeof(double) * size);
+    size_t size = (size_t) m * m;
+    double *arrA = calloc(size, sizeof(double));
+    double *arrB = calloc(size, sizeof(double));
+    double *arrC = calloc(size, sizeof(double));
     if (!arrA || !arrB || !arrC) {
         fprintf(stderr, "Malloc failed\n");
         exit(1);
     }
-    for (long i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         *(arrA + i) = *(arrB + i) = *(arrC + i) = 1.1;
     }
     double time_naive = time_dgemm(dgemm_naive, m, arrA, arrB, arrC);
