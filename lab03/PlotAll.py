@@ -7,7 +7,7 @@ nflops_per_cycle = 4
 
 # Indicate the number of processors being used (in case you are using a
 # multicore or SMP)
-nprocessors = 16
+nprocessors = 4
 
 # Indicate the clock speed of the processor.  On a Linux machine this info
 # can be found in the file /proc/cpuinfo

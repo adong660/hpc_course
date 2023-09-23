@@ -1,35 +1,29 @@
-OLD  := MMult0
+OLD  := MMult0_O2
 NEW  := MMult_openblas
-#
-# sample makefile
-#
 
 CC         := gcc
 LINKER     := $(CC)
 CFLAGS     := -Wall
 LDFLAGS    := -lm -I /opt/OpenBLAS/include/ -L /opt/OpenBLAS/lib/ -lopenblas
 
-UTIL       := copy_matrix.o \
+UTILS      := copy_matrix.o \
               compare_matrices.o \
               random_matrix.o \
               dclock.o \
               REF_MMult.o \
-              print_matrix.o \
-			  parameters.h
+              print_matrix.o
 
 TEST       := test_MMult.o
-OBJ        := $(wildcard *.o)
+TEST_OBJ   := MMult0.o MMult0_O1.o MMult0_O2.o MMult0_O2_sse.o MMult0_O3.o MMult1.o MMult_openblas.o
+
 
 all:
-	make $(OBJ)
+	make $(UTILS)
+	make $(TEST_OBJ)
+	rm -f *.x
 	make test_MMult_old.x
 	make test_MMult_new.x
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-MMult0.o: MMult0.c
-	$(CC) $(CFLAGS) -c $< -o $@
 
 MMult0_O1.o: MMult0.c
 	$(CC) $(CFLAGS) -O1 -c $< -o $@
@@ -43,17 +37,16 @@ MMult0_O3.o: MMult0.c
 MMult0_O2_sse.o: MMult0.c
 	$(CC) $(CFLAGS) -O2 -msse3 -c $< -o $@
 
-MMult1.o: MMult1.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
 MMult_openblas.o: MMult_openblas.c
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -L /opt/OpenBLAS/lib/ -lopenblas -c $< -o $@
 
-test_MMult_old.x: $(TEST) $(OLD).o $(UTIL)
-	$(LINKER) $(TEST) $(OLD).o $(UTIL) $(LDFLAGS) $(BLAS_LIB) -o $@
+test_MMult.o: test_MMult.c parameters.h
 
-test_MMult_new.x: $(TEST) $(NEW).o $(UTIL)
-	$(LINKER) $(TEST) $(NEW).o $(UTIL) $(LDFLAGS) $(BLAS_LIB) -o $@
+test_MMult_old.x: $(TEST) $(OLD).o $(UTILS)
+	$(LINKER) $(TEST) $(OLD).o $(UTILS) $(LDFLAGS) $(BLAS_LIB) -o $@
+
+test_MMult_new.x: $(TEST) $(NEW).o $(UTILS)
+	$(LINKER) $(TEST) $(NEW).o $(UTILS) $(LDFLAGS) $(BLAS_LIB) -o $@
 
 export OMP_NUM_THREADS=1
 export GOTO_NUM_THREADS=1
