@@ -5,8 +5,8 @@
 
 double time_dgemm(void (*dgemm)(int, int, int, double, double, double*, double*, double*),
                   int m, double *arrA, double *arrB, double *arrC) {
-    const double alpha = 1.2;
-    const double beta  = 2.6;
+    const double alpha = 1.0;
+    const double beta  = 1.0;
     struct timeval tic, toc;
     gettimeofday(&tic, NULL);
     dgemm(m, m, m, alpha, beta, arrA, arrB, arrC);
@@ -51,7 +51,9 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     for (size_t i = 0; i < size; i++) {
-        *(arrA + i) = *(arrB + i) = *(arrC + i) = 1.1;
+        *(arrA + i) = 2.0 * drand48( ) - 1.0;
+        *(arrB + i) = 2.0 * drand48( ) - 1.0;
+        *(arrC + i) = 2.0 * drand48( ) - 1.0;
     }
     double time_naive = time_dgemm(dgemm_naive, m, arrA, arrB, arrC);
     update_records(m, time_naive, "naive");

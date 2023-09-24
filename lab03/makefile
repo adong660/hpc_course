@@ -3,8 +3,9 @@ NEW  := MMult_openblas
 
 CC         := gcc
 LINKER     := $(CC)
-CFLAGS     := -Wall
-LDFLAGS    := -lm -I /opt/OpenBLAS/include/ -L /opt/OpenBLAS/lib/ -lopenblas
+CFLAGS     := -Wall -g
+LDFLAGS    := -lm
+BLAS_LIB   := -L /opt/OpenBLAS/lib/ -lopenblas
 
 UTILS      := copy_matrix.o \
               compare_matrices.o \
@@ -38,7 +39,7 @@ MMult0_O2_sse.o: MMult0.c
 	$(CC) $(CFLAGS) -O2 -msse3 -c $< -o $@
 
 MMult_openblas.o: MMult_openblas.c
-	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -L /opt/OpenBLAS/lib/ -lopenblas -c $< -o $@
+	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
 
 test_MMult.o: test_MMult.c parameters.h
 
