@@ -1,5 +1,5 @@
 OLD  := MMult0_O2
-NEW  := MMult_openblas
+NEW  := MMult2
 
 CC         := gcc
 LINKER     := $(CC)
@@ -15,7 +15,7 @@ UTILS      := copy_matrix.o \
               print_matrix.o
 
 TEST       := test_MMult.o
-TEST_OBJ   := MMult0.o MMult0_O1.o MMult0_O2.o MMult0_O2_sse.o MMult0_O3.o MMult1.o MMult_openblas.o
+TEST_OBJ   := MMult0.o MMult0_O1.o MMult0_O2.o MMult0_O3.o MMult1.o MMult_openblas.o MMult2.o
 
 
 all:
@@ -35,11 +35,11 @@ MMult0_O2.o: MMult0.c
 MMult0_O3.o: MMult0.c
 	$(CC) $(CFLAGS) -O3 -c $< -o $@
 
-MMult0_O2_sse.o: MMult0.c
-	$(CC) $(CFLAGS) -O2 -msse3 -c $< -o $@
-
 MMult_openblas.o: MMult_openblas.c
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
+
+MMult2.o: MMult2.c
+	$(CC) $(CFLAGS) -O2 -c $< -o $@
 
 test_MMult.o: test_MMult.c parameters.h
 

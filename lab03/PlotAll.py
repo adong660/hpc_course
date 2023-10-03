@@ -3,11 +3,11 @@ import numpy as np
 
 # Indicate the number of floating point operations that can be executed
 # per clock cycle
-nflops_per_cycle = 4
+nflops_per_cycle = 1
 
 # Indicate the number of processors being used (in case you are using a
 # multicore or SMP)
-nprocessors = 4
+nprocessors = 2
 
 # Indicate the clock speed of the processor.  On a Linux machine this info
 # can be found in the file /proc/cpuinfo
@@ -92,4 +92,4 @@ ax.set_xlim([old_data[0,0], old_data[-1,0]])
 ax.set_ylim([0, max_gflops])
 
 fig.savefig("test.png")
-# plt.show()  # Fails in my WSL
+plt.show()  # Fails in my WSL
