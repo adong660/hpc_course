@@ -11,30 +11,37 @@
 #define BLOCK_SIZE 32
 #define NUM_THREADS 16
 
+// Used to pass arguments to child threads
 struct Arg {
-    int start, end, y;
-    int lda, ldb, ldc, k;
-    double *a, *b, *c;
+    int start;
+    int end;
 };
+
+// These static variables are used to avoid cumbersome Args; should be set only once
+static int _y, _lda, _ldb, _ldc, _k;
+static double *_a, *_b, *_c;
 
 static void full_block_mult(int k, double *a, int lda, 
                             double *b, int ldb,
-                            double *c, int ldc );
+                            double *c, int ldc);
 
 static void notfull_block_mult(int m, int n, int k, double *a, int lda, 
-                              double *b, int ldb,
-                              double *c, int ldc );
+                               double *b, int ldb,
+                               double *c, int ldc);
 
-static void thread_one(void *args);
+static void block_mult_musk(struct Arg *args);
 
 /* Routine for computing C = A * B + C */
 /* (m*n) = (m*k) * (k*n) */
-void MY_MMult( int m, int n, int k, double *a, int lda, 
-                                    double *b, int ldb,
-                                    double *c, int ldc ) {
+void MY_MMult(int m, int n, int k, double *a, int lda, 
+                                   double *b, int ldb,
+                                   double *c, int ldc) {
     int x, y;       // number of blocks in horizontal and verticle directions
     x = n / BLOCK_SIZE;
     y = m / BLOCK_SIZE;
+
+    _y = y; _k = k; _lda = lda; _ldb = ldb; _ldc = ldc;
+    _a = a; _b = b; _c = c;                     // Set static variables
 
     double *block_a, *block_b, *block_c;        // position of blocks
 
@@ -43,9 +50,9 @@ void MY_MMult( int m, int n, int k, double *a, int lda,
     for (int t = 0; t < NUM_THREADS; t++) {
         int start = x * t / NUM_THREADS;
         int end = x * (t + 1) / NUM_THREADS;
-        struct Arg arg = {start, end, y, lda, ldb, ldc, k, a, b, c};
-        args[t] = arg;
-        Pthread_create(&tid[t], NULL, (void *(*) (void *)) thread_one, (void *) &args[t]);
+        args[t].start = start;
+        args[t].end = end;
+        Pthread_create(&tid[t], NULL, (void *(*) (void *)) block_mult_musk, (void *) &args[t]);
     }
     for (int t = 0; t < NUM_THREADS; t++) {
         Pthread_join(tid[t], NULL);
@@ -101,26 +108,21 @@ static void notfull_block_mult(int m, int n, int k,
     }
 }
 
-static void thread_one(void *args) {
-    struct Arg *the_args = (struct Arg *) args;
-    int start = the_args->start;
-    int end = the_args->end;
-    int y = the_args->y;
-    double *a = the_args->a;
-    double *b = the_args->b;
-    double *c = the_args->c;
-    int lda = the_args->lda;
-    int ldb = the_args->ldb;
-    int ldc = the_args->ldc;
-    int k = the_args->k;
+#define _A(i,j) _a[ (j)*_lda + (i) ]
+#define _B(i,j) _b[ (j)*_ldb + (i) ]
+#define _C(i,j) _c[ (j)*_ldc + (i) ]
+
+static void block_mult_musk(struct Arg *args) {
+    int start = args->start;
+    int end   = args->end;
 
     double *block_a, *block_b, *block_c;
     for (int j = start; j < end; j++) {
-        for (int i = 0; i < y; i++) {
-            block_c = &C(i * BLOCK_SIZE, j * BLOCK_SIZE);
-            block_a = &A(i * BLOCK_SIZE, 0);
-            block_b = &B(0, j * BLOCK_SIZE);
-            full_block_mult(k, block_a, lda, block_b, ldb, block_c, ldc);
+        for (int i = 0; i < _y; i++) {
+            block_c = &_C(i * BLOCK_SIZE, j * BLOCK_SIZE);
+            block_a = &_A(i * BLOCK_SIZE, 0);
+            block_b = &_B(0, j * BLOCK_SIZE);
+            full_block_mult(_k, block_a, _lda, block_b, _ldb, block_c, _ldc);
         }
     }
 }

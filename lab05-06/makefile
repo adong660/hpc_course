@@ -4,7 +4,7 @@ NEW  := MMult5
 CC         := gcc
 LINKER     := $(CC)
 CFLAGS     := -Wall -g -O1
-LDFLAGS    := -Wall -lm -L /opt/OpenBLAS/lib/ -lopenblas -fopenmp -pthread
+LDFLAGS    := -lm -L /opt/OpenBLAS/lib/ -lopenblas -fopenmp -pthread
 
 UTILS      := copy_matrix.o \
               compare_matrices.o \
@@ -57,6 +57,7 @@ time_MMult_new.x: $(TIME) $(NEW).o $(UTILS)
 # export OMP_NUM_THREADS=16
 # export GOTO_NUM_THREADS=1
 
+# Just time the speed, do not validate correctness
 run_time:
 	make all
 
@@ -72,6 +73,7 @@ run_time:
 
 	python3 PlotAll.py
 
+# Both time the speed and validate correctness
 run_test:
 	make all
 
