@@ -7,7 +7,7 @@ nflops_per_cycle = 1
 
 # Indicate the number of processors being used (in case you are using a
 # multicore or SMP)
-nprocessors = 16
+nprocessors = 1
 
 # Indicate the clock speed of the processor.  On a Linux machine this info
 # can be found in the file /proc/cpuinfo
@@ -15,7 +15,7 @@ nprocessors = 16
 # Note: some processors have a "turbo boost" mode, which increases
 # the peak clock rate...
 #
-GHz_of_processor = 4.50
+GHz_of_processor = 62.4
 
 
 class Parser:

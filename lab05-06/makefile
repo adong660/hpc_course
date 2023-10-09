@@ -42,6 +42,8 @@ MMult_openblas.o: MMult_openblas.c
 
 test_MMult.o: test_MMult.c parameters.h
 
+time_MMult.o: time_MMult.c parameters.h
+
 test_MMult_old.x: $(TEST) $(OLD).o $(UTILS)
 	$(LINKER) $(TEST) $(OLD).o $(UTILS) $(LDFLAGS) -o $@
 

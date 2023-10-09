@@ -13,8 +13,8 @@ static void full_block_mult(int k, double *a, int lda,
                             double *c, int ldc );
 
 static void notfull_block_mult(int m, int n, int k, double *a, int lda, 
-                              double *b, int ldb,
-                              double *c, int ldc );
+                               double *b, int ldb,
+                               double *c, int ldc );
 
 /* Routine for computing C = A * B + C */
 /* (m*n) = (m*k) * (k*n) */

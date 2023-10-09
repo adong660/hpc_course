@@ -1,5 +1,6 @@
 /* OpenMP implementation of blocked matrix multiplication */
 /* Split the matrix into fixed size blocks */
+#include <omp.h>
 #include "MMult.h"
 
 #define A(i,j) a[ (j)*lda + (i) ]
@@ -7,20 +8,22 @@
 #define C(i,j) c[ (j)*ldc + (i) ]
 
 #define BLOCK_SIZE 32
+#define NUM_THREADS 16
 
 static void full_block_mult(int k, double *a, int lda, 
                             double *b, int ldb,
                             double *c, int ldc );
 
 static void notfull_block_mult(int m, int n, int k, double *a, int lda, 
-                              double *b, int ldb,
-                              double *c, int ldc );
+                               double *b, int ldb,
+                               double *c, int ldc);
 
 /* Routine for computing C = A * B + C */
 /* (m*n) = (m*k) * (k*n) */
 void MY_MMult( int m, int n, int k, double *a, int lda, 
                                     double *b, int ldb,
                                     double *c, int ldc ) {
+    omp_set_num_threads(NUM_THREADS);
     int x, y;       // number of blocks in horizontal and verticle directions
     x = n / BLOCK_SIZE;
     y = m / BLOCK_SIZE;
