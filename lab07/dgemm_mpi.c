@@ -4,13 +4,14 @@
 #include "utilities.h"
 
 #define MATRIX_SIZE 2000
+#define MAIN_PROCESS 0
 
 void naive_dgemm(int m, int n, int k, double *a, int lda, double *b, int ldb, double *c, int ldc);
 
 static void allocate_matrices(int id, int a_size, int b_size, int c_size,
                               double **a, double **b, double **c, double **c_ref);
 
-static void free_memory(int id, double *a, double *b, double *c, double *c_ref);
+static void free_matrices(int id, double *a, double *b, double *c, double *c_ref);
 
 int main(int argc, char **argv) {
 
@@ -21,7 +22,8 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
 
     double time_elapsed = 0.0, tic = 0.0;   // Timer
-    tic = MPI_Wtime();
+    if (my_id == MAIN_PROCESS)
+        tic = MPI_Wtime();
 
     /* Matrices size */
     int m, n, k;
@@ -38,37 +40,31 @@ int main(int argc, char **argv) {
     a = b = c = c_ref = NULL;
     allocate_matrices(my_id, a_size, b_size, c_size, &a, &b, &c, &c_ref);
 
-    time_elapsed += MPI_Wtime() - tic;
-
-    /* Randomize matrices in process 0 */
     if (my_id == 0) {
+        time_elapsed += MPI_Wtime() - tic;
+        /* Randomize matrices in main process */
         fill_matrix(m, k, a, lda);
         fill_matrix(k, n, b, ldb);
         fill_matrix(m, n, c, ldc);
-    }
-
-    /* Caculate reference matrix c_ref */
-    if (my_id == 0) {
+        /* Caculate reference matrix c_ref */
         copy_matrix(m, n, c_ref, ldc, c, ldc);
         naive_dgemm(m, n, k, a, lda, b, ldb, c_ref, ldc);
+        tic = MPI_Wtime();
     }
 
-    tic = MPI_Wtime();
-
-    /* Then broadcast matrices A, B, and C to other processes */
-    MPI_Bcast(a, a_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(b, b_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Bcast(c, c_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    /* Broadcast matrices A, B, and C to other processes */
+    MPI_Bcast(a, a_size, MPI_DOUBLE, MAIN_PROCESS, MPI_COMM_WORLD);
+    MPI_Bcast(b, b_size, MPI_DOUBLE, MAIN_PROCESS, MPI_COMM_WORLD);
+    MPI_Bcast(c, c_size, MPI_DOUBLE, MAIN_PROCESS, MPI_COMM_WORLD);
     /* Calculate each process's own part */
     int n_start = n * my_id / num_processes;
     int n_end = n * (my_id + 1) / num_processes;
     naive_dgemm(m, n_end - n_start, k, &A(0, 0), lda, &B(0, n_start), ldb, &C(0, n_start), ldc);
-
     /* Process 0 collects data sent by other processes */
     #define TAG 20      // Message tag
-    if (my_id > 0) {    // Send
+    if (my_id != MAIN_PROCESS) {    // Send
         int buff_count = (n_end - n_start) * m;     // Needs to be corrected in case that ldc != m
-        MPI_Send(&C(0, n_start), buff_count, MPI_DOUBLE, 0, TAG, MPI_COMM_WORLD);
+        MPI_Send(&C(0, n_start), buff_count, MPI_DOUBLE, MAIN_PROCESS, TAG, MPI_COMM_WORLD);
     }
     else {              // Collect
         for (int rank = 1; rank < num_processes; rank++) {
@@ -78,6 +74,10 @@ int main(int argc, char **argv) {
             MPI_Status status;
             MPI_Recv(&C(0, n_start), buff_count, MPI_DOUBLE, rank, TAG, MPI_COMM_WORLD, &status);
         }
+    }
+    free_matrices(my_id, a, b, c, c_ref);
+
+    if (my_id == MAIN_PROCESS) {
         /* Time elapsed and error value */
         time_elapsed = MPI_Wtime() - tic;
         double gflops = 2.0 * m * n * k / time_elapsed / 1e9;
@@ -86,7 +86,6 @@ int main(int argc, char **argv) {
         printf("Gflops: %f\n", gflops);
         printf("Error value: %f\n", error_value);
     }
-    free_memory(my_id, a, b, c, c_ref);
 
     MPI_Finalize();
     return 0;
@@ -115,7 +114,7 @@ static void allocate_matrices(int id, int a_size, int b_size, int c_size,
         exit(0);
     }
     /* Only process 0 needs reference matrix C_ref */
-    if (id == 0) {
+    if (id == MAIN_PROCESS) {
         *c_ref = calloc(c_size, sizeof(double));
         if (!(*c_ref)) {
             fprintf(stderr, "calloc failed\n");
@@ -124,7 +123,7 @@ static void allocate_matrices(int id, int a_size, int b_size, int c_size,
     }
 }
 
-static void free_memory(int id, double *a, double *b, double *c, double *c_ref) {
+static void free_matrices(int id, double *a, double *b, double *c, double *c_ref) {
     free(a);
     free(b);
     free(c);
