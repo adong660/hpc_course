@@ -4,8 +4,12 @@
 #include <time.h>
 #include "utilities.h"
 
-#define dst(i, j) dst[(i) + (j) * ld_dst]
-#define rsc(i, j) rsc[(i) + (j) * ld_rsc]
+#define dst(i, j)    dst[(i) + (j) * ld_dst]
+#define rsc(i, j)    rsc[(i) + (j) * ld_rsc]
+#define matrix(i, j) matrix[(i) + (j) * ld]
+#define A(i, j)      a[(i) + (j) * lda]
+#define B(i, j)      b[(i) + (j) * ldb]
+
 void copy_matrix(int m, int n, double *dst, int ld_dst, const double *rsc, int ld_rsc) {
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
@@ -14,7 +18,6 @@ void copy_matrix(int m, int n, double *dst, int ld_dst, const double *rsc, int l
     }
 }
 
-#define matrix(i, j) matrix[(i) + (j) * ld]
 void print_matrix(int m, int n, double *matrix, int ld) {
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
