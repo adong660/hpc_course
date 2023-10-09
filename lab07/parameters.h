@@ -1,4 +1,3 @@
-
-#define S_FIRST 500
-#define S_LAST  2000
-#define S_STEP  500
+#define S_FIRST 300
+#define S_LAST  3000
+#define S_STEP  300

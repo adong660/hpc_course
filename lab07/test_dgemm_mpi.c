@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <mpi.h>
+#include <cblas.h>
 #include "dgemm_mpi.h"
 #include "utilities.h"
 #include "parameters.h"
@@ -12,7 +13,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
 
-    for (int size = S_FIRST; size < S_LAST; size += S_STEP) {
+    for (int size = S_FIRST; size <= S_LAST; size += S_STEP) {
         /* Matrices size */
         int m, n, k;
         m = n = k = size;
@@ -40,7 +41,8 @@ int main(int argc, char **argv) {
             fill_matrix(m, n, c, ldc);
             /* Caculate reference matrix c_ref */
             copy_matrix(m, n, c_ref, ldc, c, ldc);
-            naive_dgemm(m, n, k, a, lda, b, ldb, c_ref, ldc);
+            cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+                        (blasint) m, (blasint) n, (blasint) k, 1.0, a, lda, b, ldb, 1.0, c_ref, ldc);
 
             tic = MPI_Wtime();
         }
@@ -52,9 +54,7 @@ int main(int argc, char **argv) {
             double time_elapsed = MPI_Wtime() - tic;
             double gflops = 2.0 * m * n * k / time_elapsed / 1e9;
             double error_value = compare_matrices(m, n, c, ldc, c_ref, ldc);
-            printf("Time elapsed: %f\n", time_elapsed);
-            printf("Gflops: %f\n", gflops);
-            printf("Error value: %f\n", error_value);
+            printf("%d %le %le\n", size, gflops / time_elapsed, error_value);
             free(a); free(b); free(c); free(c_ref);
         }
     }

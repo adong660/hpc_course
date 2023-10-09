@@ -7,6 +7,7 @@
 #define B(i, j) b[(i) + (j) * ldb]
 #define C(i, j) c[(i) + (j) * ldc]
 
+/* MPI implementation of matrix multiplication */
 void mpi_dgemm(int my_id, int num_processes, int m, int n, int k, 
                double *a, int lda, double *b, int ldb, double *c, int ldc) {
     /* Width of the section this process should calculate */
