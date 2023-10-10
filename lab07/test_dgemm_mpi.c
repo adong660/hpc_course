@@ -16,21 +16,25 @@ int main(int argc, char **argv) {
     for (int size = S_FIRST; size <= S_LAST; size += S_STEP) {
         /* Matrices size */
         int m, n, k;
-        m = n = k = size;
         int lda, ldb, ldc;
-        lda = ldb = ldc = size;     // if lda == a, etc.
         /* Matrices */
         double *a, *b, *c, *c_ref;
-        a = b = c = c_ref = NULL;
         /* Timer */
-        double tic = 0.0;
+        double tic;
 
         if (my_id == MAIN_PROCESS) {
+            m = n = k = size;
+            if (LD_EQUALS_SIZE) {
+                lda = ldb = ldc = size;
+            } else {
+                lda = LDA; ldb = LDB; ldc = LDC;
+            }
+            a = b = c = c_ref = NULL;
             /* Allocate memory for matrices in main process */
-            a = calloc(m * k, sizeof(double));
-            b = calloc(k * n, sizeof(double));
-            c = calloc(m * n, sizeof(double));
-            c_ref = calloc(m * n, sizeof(double));
+            a = calloc(lda * k, sizeof(double));
+            b = calloc(ldb * n, sizeof(double));
+            c = calloc(ldc * n, sizeof(double));
+            c_ref = calloc(ldc * n, sizeof(double));
             if (!(a && b && c && c_ref)) {
                 fprintf(stderr, "Calloc failed\n");
                 exit(0);
@@ -42,7 +46,7 @@ int main(int argc, char **argv) {
             /* Caculate reference matrix c_ref */
             copy_matrix(m, n, c_ref, ldc, c, ldc);
             cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
-                        (blasint) m, (blasint) n, (blasint) k, 1.0, a, lda, b, ldb, 1.0, c_ref, ldc);
+                (blasint)m, (blasint)n, (blasint)k, 1.0, a, lda, b, ldb, 1.0, c_ref, ldc);
 
             tic = MPI_Wtime();
         }
@@ -54,7 +58,7 @@ int main(int argc, char **argv) {
             double time_elapsed = MPI_Wtime() - tic;
             double gflops = 2.0 * m * n * k / time_elapsed / 1e9;
             double error_value = compare_matrices(m, n, c, ldc, c_ref, ldc);
-            printf("%d %le %le\n", size, gflops / time_elapsed, error_value);
+            printf("%d %le %le\n", size, gflops, error_value);
             free(a); free(b); free(c); free(c_ref);
         }
     }

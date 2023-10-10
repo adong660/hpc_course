@@ -33,3 +33,7 @@ utilities.o: utilities.c utilities.h
 
 clean:
 	rm -f $(OBJ) $(EXEC)
+
+cleanall:
+	clean
+	rm -f *.m *.png
