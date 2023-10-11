@@ -14,7 +14,7 @@ static void full_block_mult(int k, double *a, int lda,
                             double *b, int ldb,
                             double *c, int ldc );
 
-static void notfull_block_mult(int m, int n, int k, double *a, int lda, 
+static void block_mult(int m, int n, int k, double *a, int lda, 
                                double *b, int ldb,
                                double *c, int ldc);
 
@@ -48,20 +48,20 @@ void MY_MMult( int m, int n, int k, double *a, int lda,
         block_c = &C(i * BLOCK_SIZE, right_edge);
         block_a = &A(i * BLOCK_SIZE, 0);
         block_b = &B(0, right_edge);
-        notfull_block_mult(BLOCK_SIZE, n - right_edge, k, block_a, lda, block_b, ldb,  block_c, ldc);
+        block_mult(BLOCK_SIZE, n - right_edge, k, block_a, lda, block_b, ldb,  block_c, ldc);
     }
 #pragma omp parallel for
     for (int j = 0; j < x; j++) {
         block_c = &C(down_edge, j * BLOCK_SIZE);
         block_a = &A(down_edge, 0);
         block_b = &B(0, j * BLOCK_SIZE);
-        notfull_block_mult(m - down_edge, BLOCK_SIZE, k, block_a, lda, block_b, ldb,  block_c, ldc);
+        block_mult(m - down_edge, BLOCK_SIZE, k, block_a, lda, block_b, ldb,  block_c, ldc);
     }
     {
         block_c = &C(down_edge, right_edge);
         block_a = &A(down_edge, 0);
         block_b = &B(0, right_edge);
-        notfull_block_mult(m - down_edge, n - right_edge, k, block_a, lda, block_b, ldb, block_c, ldc);
+        block_mult(m - down_edge, n - right_edge, k, block_a, lda, block_b, ldb, block_c, ldc);
     }
 }
 
@@ -78,7 +78,7 @@ static void full_block_mult(int k, double *a, int lda,
     }
 }
 
-static void notfull_block_mult(int m, int n, int k,
+static void block_mult(int m, int n, int k,
                               double *a, int lda, 
                               double *b, int ldb,
                               double *c, int ldc ) {
