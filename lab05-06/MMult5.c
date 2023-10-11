@@ -1,4 +1,4 @@
-/* OpenMP implementation of blocked matrix multiplication */
+/* OpenMP implementation of multi-threaded blocked matrix multiplication */
 /* Split the matrix into fixed size blocks */
 #include <omp.h>
 #include "MMult.h"
