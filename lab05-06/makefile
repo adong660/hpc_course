@@ -1,5 +1,5 @@
-OLD  := MMult4
-NEW  := MMult5
+OLD  := MMult2
+NEW  := MMult3
 
 CC         := gcc
 LINKER     := $(CC)

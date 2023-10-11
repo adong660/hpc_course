@@ -15,7 +15,7 @@ nprocessors = 1
 # Note: some processors have a "turbo boost" mode, which increases
 # the peak clock rate...
 #
-GHz_of_processor = 62.4
+GHz_of_processor = 10
 
 
 class Parser:
