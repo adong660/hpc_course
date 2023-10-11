@@ -1,4 +1,4 @@
-/* Changed the iteration ordering */
+/* Version that changes the iteration ordering */
 #include "MMult.h"
 
 #define A(i, j) a[(j) * lda + (i)]

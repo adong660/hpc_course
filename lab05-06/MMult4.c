@@ -22,7 +22,7 @@ static void block_dgemm(int m, int n, int k, double *a, int lda,
                                       double *b, int ldb,
                                       double *c, int ldc);
 
-static inline void naive_dgemm(int m, int n, int k, double *a, int lda, 
+inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
                                       double *b, int ldb,
                                       double *c, int ldc);
 
@@ -100,7 +100,7 @@ static void block_dgemm(int m, int n, int k, double *a, int lda,
     }
 }
 
-static inline void naive_dgemm(int m, int n, int k, double *a, int lda, 
+inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
                                double *b, int ldb,
                                double *c, int ldc) {
     for (int j = 0; j < n; j++) {
