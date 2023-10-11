@@ -1,4 +1,4 @@
-/* Single thread implementation of blocked matrix multiplication */
+/* Single thread implementation of block matrix multiplication */
 /* Split the matrix into fixed size blocks */
 #include "MMult.h"
 

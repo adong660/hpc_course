@@ -1,4 +1,4 @@
-/* Pthreads implementation of blocked matrix multiplication */
+/* Pthreads implementation of multi-threaded block matrix multiplication */
 /* Split the matrix into fixed size blocks */
 #include "MMult.h"
 #include <pthread.h>
@@ -8,121 +8,106 @@
 #define B(i,j) b[ (j)*ldb + (i) ]
 #define C(i,j) c[ (j)*ldc + (i) ]
 
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 20
 #define NUM_THREADS 16
 
 // Used to pass arguments to child threads
 struct Arg {
-    int start;
-    int end;
+    int m, n, k;
+    int lda, ldb, ldc;
+    double *a, *b, *c;
 };
 
-// These static variables are used to avoid cumbersome Args; should be set only once
-static int _y, _lda, _ldb, _ldc, _k;
-static double *_a, *_b, *_c;
+static void block_dgemm(int m, int n, int k, double *a, int lda, 
+                                      double *b, int ldb,
+                                      double *c, int ldc);
 
-static void full_block_mult(int k, double *a, int lda, 
-                            double *b, int ldb,
-                            double *c, int ldc);
+inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
+                                      double *b, int ldb,
+                                      double *c, int ldc);
 
-static void block_mult(int m, int n, int k, double *a, int lda, 
-                               double *b, int ldb,
-                               double *c, int ldc);
-
-static void block_mult_musk(struct Arg *args);
+static void *dgemm_thread(void *arg);
 
 /* Routine for computing C = A * B + C */
 /* (m*n) = (m*k) * (k*n) */
 void MY_MMult(int m, int n, int k, double *a, int lda, 
                                    double *b, int ldb,
                                    double *c, int ldc) {
-    int x, y;       // number of blocks in horizontal and verticle directions
-    x = n / BLOCK_SIZE;
-    y = m / BLOCK_SIZE;
-
-    _y = y; _k = k; _lda = lda; _ldb = ldb; _ldc = ldc;
-    _a = a; _b = b; _c = c;                     // Set static variables
-
-    double *block_a, *block_b, *block_c;        // position of blocks
-
     pthread_t tid[NUM_THREADS];
-    struct Arg args[NUM_THREADS];
+    struct Arg arg[NUM_THREADS];
     for (int t = 0; t < NUM_THREADS; t++) {
-        int start = x * t / NUM_THREADS;
-        int end = x * (t + 1) / NUM_THREADS;
-        args[t].start = start;
-        args[t].end = end;
-        Pthread_create(&tid[t], NULL, (void *(*) (void *)) block_mult_musk, (void *) &args[t]);
+        int n_start = t * n / NUM_THREADS;
+        int n_end = (t + 1) * n / NUM_THREADS;
+        arg[t].m = m; arg[t].n = n_end - n_start; arg[t].k = k;
+        arg[t].a = a; arg[t].b = &B(0, n_start); arg[t].c = &C(0, n_start);
+        arg[t].lda = lda; arg[t].ldb = ldb; arg[t].ldc = ldc;
+        Pthread_create(&tid[t], NULL, dgemm_thread, (void *) &arg[t]);
     }
     for (int t = 0; t < NUM_THREADS; t++) {
         Pthread_join(tid[t], NULL);
     }
+}
 
-    int right_edge, down_edge;
-    right_edge = x * BLOCK_SIZE;
-    down_edge  = y * BLOCK_SIZE;
-    for (int i = 0; i < y; i++) {
-        block_c = &C(i * BLOCK_SIZE, right_edge);
-        block_a = &A(i * BLOCK_SIZE, 0);
-        block_b = &B(0, right_edge);
-        block_mult(BLOCK_SIZE, n - right_edge, k, block_a, lda, block_b, ldb,  block_c, ldc);
+static void *dgemm_thread(void *_arg) {
+    struct Arg *arg = _arg;
+    int m, n, k;
+    int lda, ldb, ldc;
+    double *a, *b, *c;
+    m = arg->m; n = arg->n; k = arg->k;
+    lda = arg->lda; ldb = arg->ldb; ldc = arg->ldc;
+    a = arg->a; b = arg->b; c = arg->c;
+    block_dgemm(m, n, k, a, lda, b, ldb, c, ldc);
+    return NULL;
+}
+
+static void block_dgemm(int m, int n, int k, double *a, int lda, 
+                        double *b, int ldb,
+                        double *c, int ldc) {
+    int i = 0, j = 0, p = 0;
+    for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
+        for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
+            for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+                naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE,
+                            &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+            }
+            naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, k - p,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+        }
     }
-    for (int j = 0; j < x; j++) {
-        block_c = &C(down_edge, j * BLOCK_SIZE);
-        block_a = &A(down_edge, 0);
-        block_b = &B(0, j * BLOCK_SIZE);
-        block_mult(m - down_edge, BLOCK_SIZE, k, block_a, lda, block_b, ldb,  block_c, ldc);
+    for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
+        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+            naive_dgemm(m - i, BLOCK_SIZE, BLOCK_SIZE,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+        }
+        naive_dgemm(m - i, BLOCK_SIZE, k - p,
+                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+    }
+    for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
+        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+            naive_dgemm(BLOCK_SIZE, n - j, BLOCK_SIZE,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+        }
+        naive_dgemm(BLOCK_SIZE, n - j, k - p,
+                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
     {
-        block_c = &C(down_edge, right_edge);
-        block_a = &A(down_edge, 0);
-        block_b = &B(0, right_edge);
-        block_mult(m - down_edge, n - right_edge, k, block_a, lda, block_b, ldb, block_c, ldc);
-    }
-}
-
-static void full_block_mult(int k, double *a, int lda, 
-                            double *b, int ldb,
-                            double *c, int ldc ) {
-    int i, j, p;
-    for (j = 0; j < BLOCK_SIZE; j++) {
-        for (p = 0; p < k; p++) {
-            for (i = 0; i < BLOCK_SIZE; i++) {
-                C(i, j) = C(i, j) + A(i, p) * B(p, j);
-            }
+        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+            naive_dgemm(m - i, n - j, BLOCK_SIZE,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
         }
+        naive_dgemm(m - i, n - j, k - p,
+                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
 }
 
-static void block_mult(int m, int n, int k,
-                              double *a, int lda, 
-                              double *b, int ldb,
-                              double *c, int ldc ) {
-    int i, j, p;
-    for (j = 0; j < n; j++) {
-        for (p = 0; p < k; p++) {
-            for (i = 0; i < m; i++) {
-                C(i, j) = C(i, j) + A(i, p) * B(p, j);
+inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
+                               double *b, int ldb,
+                               double *c, int ldc) {
+    for (int j = 0; j < n; j++) {
+        for (int p = 0; p < k; p++) {
+            for (int i = 0; i < m; i++) {
+                C(i, j) += A(i, p) * B(p, j);
             }
-        }
-    }
-}
-
-#define _A(i,j) _a[ (j)*_lda + (i) ]
-#define _B(i,j) _b[ (j)*_ldb + (i) ]
-#define _C(i,j) _c[ (j)*_ldc + (i) ]
-
-static void block_mult_musk(struct Arg *args) {
-    int start = args->start;
-    int end   = args->end;
-
-    double *block_a, *block_b, *block_c;
-    for (int j = start; j < end; j++) {
-        for (int i = 0; i < _y; i++) {
-            block_c = &_C(i * BLOCK_SIZE, j * BLOCK_SIZE);
-            block_a = &_A(i * BLOCK_SIZE, 0);
-            block_b = &_B(0, j * BLOCK_SIZE);
-            full_block_mult(_k, block_a, _lda, block_b, _ldb, block_c, _ldc);
         }
     }
 }
