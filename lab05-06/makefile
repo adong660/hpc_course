@@ -56,9 +56,6 @@ time_MMult_old.x: $(TIME) $(OLD).o $(UTILS)
 time_MMult_new.x: $(TIME) $(NEW).o $(UTILS)
 	$(LINKER) $(TIME) $(NEW).o $(UTILS) $(LDFLAGS) -o $@
 
-# export OMP_NUM_THREADS=16
-# export GOTO_NUM_THREADS=1
-
 # Just time the speed, do not validate correctness
 run_time:
 	make all
