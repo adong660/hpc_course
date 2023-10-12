@@ -31,8 +31,8 @@ static void block_dgemm(int m, int n, int k, double *a, int lda,
                         double *c, int ldc) {
     int i = 0, j = 0, p = 0;
     omp_set_num_threads(NUM_THREADS);
-    #pragma omp parallel for lastprivate(i) private(j)
     for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
+        #pragma omp parallel for private(p)
         for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
             for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
                 naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE,
@@ -42,6 +42,7 @@ static void block_dgemm(int m, int n, int k, double *a, int lda,
                         &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
         }
     }
+    #pragma omp parallel for lastprivate(j) private(p)
     for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
         for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
             naive_dgemm(m - i, BLOCK_SIZE, BLOCK_SIZE,
@@ -50,6 +51,7 @@ static void block_dgemm(int m, int n, int k, double *a, int lda,
         naive_dgemm(m - i, BLOCK_SIZE, k - p,
                     &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
+    #pragma omp parallel for lastprivate(i) private(p)
     for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
         for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
             naive_dgemm(BLOCK_SIZE, n - j, BLOCK_SIZE,
