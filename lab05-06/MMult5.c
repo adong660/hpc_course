@@ -7,86 +7,74 @@
 #define B(i,j) b[ (j)*ldb + (i) ]
 #define C(i,j) c[ (j)*ldc + (i) ]
 
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 20
 #define NUM_THREADS 16
 
-static void full_block_mult(int k, double *a, int lda, 
-                            double *b, int ldb,
-                            double *c, int ldc );
+static void block_dgemm(int m, int n, int k, double *a, int lda, 
+                                      double *b, int ldb,
+                                      double *c, int ldc);
 
-static void block_mult(int m, int n, int k, double *a, int lda, 
-                               double *b, int ldb,
-                               double *c, int ldc);
+inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
+                                      double *b, int ldb,
+                                      double *c, int ldc);
 
 /* Routine for computing C = A * B + C */
 /* (m*n) = (m*k) * (k*n) */
-void MY_MMult( int m, int n, int k, double *a, int lda, 
-                                    double *b, int ldb,
-                                    double *c, int ldc ) {
+void MY_MMult(int m, int n, int k, double *a, int lda, 
+                                   double *b, int ldb,
+                                   double *c, int ldc) {
+    block_dgemm(m, n, k, a, lda, b, ldb, c, ldc);
+}
+
+static void block_dgemm(int m, int n, int k, double *a, int lda, 
+                        double *b, int ldb,
+                        double *c, int ldc) {
+    int i = 0, j = 0, p = 0;
     omp_set_num_threads(NUM_THREADS);
-    int x, y;       // number of blocks in horizontal and verticle directions
-    x = n / BLOCK_SIZE;
-    y = m / BLOCK_SIZE;
-
-    double *block_a, *block_b, *block_c;        // position of blocks
-
-#pragma omp parallel for
-    for (int j = 0; j < x; j++) {
-        for (int i = 0; i < y; i++) {
-            block_c = &C(i * BLOCK_SIZE, j * BLOCK_SIZE);
-            block_a = &A(i * BLOCK_SIZE, 0);
-            block_b = &B(0, j * BLOCK_SIZE);
-            full_block_mult(k, block_a, lda, block_b, ldb, block_c, ldc);
+    #pragma omp parallel for lastprivate(i) private(j)
+    for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
+        for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
+            for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+                naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE,
+                            &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+            }
+            naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, k - p,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
         }
     }
-
-    int right_edge, down_edge;
-    right_edge = x * BLOCK_SIZE;
-    down_edge  = y * BLOCK_SIZE;
-#pragma omp parallel for
-    for (int i = 0; i < y; i++) {
-        block_c = &C(i * BLOCK_SIZE, right_edge);
-        block_a = &A(i * BLOCK_SIZE, 0);
-        block_b = &B(0, right_edge);
-        block_mult(BLOCK_SIZE, n - right_edge, k, block_a, lda, block_b, ldb,  block_c, ldc);
+    for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
+        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+            naive_dgemm(m - i, BLOCK_SIZE, BLOCK_SIZE,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+        }
+        naive_dgemm(m - i, BLOCK_SIZE, k - p,
+                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
-#pragma omp parallel for
-    for (int j = 0; j < x; j++) {
-        block_c = &C(down_edge, j * BLOCK_SIZE);
-        block_a = &A(down_edge, 0);
-        block_b = &B(0, j * BLOCK_SIZE);
-        block_mult(m - down_edge, BLOCK_SIZE, k, block_a, lda, block_b, ldb,  block_c, ldc);
+    for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
+        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+            naive_dgemm(BLOCK_SIZE, n - j, BLOCK_SIZE,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+        }
+        naive_dgemm(BLOCK_SIZE, n - j, k - p,
+                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
     {
-        block_c = &C(down_edge, right_edge);
-        block_a = &A(down_edge, 0);
-        block_b = &B(0, right_edge);
-        block_mult(m - down_edge, n - right_edge, k, block_a, lda, block_b, ldb, block_c, ldc);
-    }
-}
-
-static void full_block_mult(int k, double *a, int lda, 
-                            double *b, int ldb,
-                            double *c, int ldc ) {
-    int i, j, p;
-    for (j = 0; j < BLOCK_SIZE; j++) {
-        for (p = 0; p < k; p++) {
-            for (i = 0; i < BLOCK_SIZE; i++) {
-                C(i, j) = C(i, j) + A(i, p) * B(p, j);
-            }
+        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
+            naive_dgemm(m - i, n - j, BLOCK_SIZE,
+                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
         }
+        naive_dgemm(m - i, n - j, k - p,
+                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
 }
 
-static void block_mult(int m, int n, int k,
-                              double *a, int lda, 
-                              double *b, int ldb,
-                              double *c, int ldc ) {
-    int i, j, p;
-    for (j = 0; j < n; j++) {
-        for (p = 0; p < k; p++) {
-            for (i = 0; i < m; i++) {
-                C(i, j) = C(i, j) + A(i, p) * B(p, j);
+inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
+                               double *b, int ldb,
+                               double *c, int ldc) {
+    for (int j = 0; j < n; j++) {
+        for (int p = 0; p < k; p++) {
+            for (int i = 0; i < m; i++) {
+                C(i, j) += A(i, p) * B(p, j);
             }
         }
     }
