@@ -1,9 +1,9 @@
-OLD  := MMult0_O2
-NEW  := MMult2
+OLD  := MMult2
+NEW  := MMult_openblas
 
 CC         := gcc
 LINKER     := $(CC)
-CFLAGS     := -Wall -g
+CFLAGS     := -Wall -g -O1
 LDFLAGS    := -lm
 BLAS_LIB   := -L /opt/OpenBLAS/lib/ -lopenblas
 
