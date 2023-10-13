@@ -2,6 +2,7 @@
 #include <malloc.h>
 #include <mpi.h>
 #include "dgemm_mpi.h"
+#include "MMult.h"
 
 #define A(i, j) a[(i) + (j) * lda]
 #define B(i, j) b[(i) + (j) * ldb]

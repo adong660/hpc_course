@@ -3,7 +3,7 @@ LINKER   := $(CC)
 CFLAGS   := -Wall -g -O1 -I /opt/OpenBLAS/include/
 LDFLAGS  := -L /opt/OpenBLAS/lib/ -lopenblas
 
-OBJ      := test_dgemm_mpi.o dgemm_mpi.o utilities.o
+OBJ      := test_dgemm_mpi.o dgemm_mpi.o utilities.o MMult3.o
 EXEC     := test_dgemm_mpi
 
 NUM_PROCESSES := 16
@@ -27,7 +27,7 @@ test_dgemm_mpi: $(OBJ)
 
 test_dgemm_mpi.o: test_dgemm_mpi.c dgemm_mpi.h utilities.h parameters.h
 
-dgemm_mpi.o: dgemm_mpi.c dgemm_mpi.h
+dgemm_mpi.o: dgemm_mpi.c dgemm_mpi.h MMult3.o MMult.h
 
 utilities.o: utilities.c utilities.h
 
