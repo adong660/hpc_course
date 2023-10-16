@@ -35,5 +35,5 @@ clean:
 	rm -f $(OBJ) $(EXEC)
 
 cleanall:
-	clean
+	make clean
 	rm -f *.m *.png
