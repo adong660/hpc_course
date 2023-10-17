@@ -1,5 +1,4 @@
-/* OpenMP implementation of multi-threaded block matrix multiplication */
-/* Split the matrix into fixed size blocks */
+/* Block + jpi naive + OpenMP */
 #include <omp.h>
 #include "dgemm.h"
 

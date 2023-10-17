@@ -1,5 +1,4 @@
-/* Single thread implementation of block matrix multiplication */
-/* Split the matrix into fixed size blocks */
+/* Block + jpi naive */
 #include "dgemm.h"
 
 #define A(i,j) a[ (j)*lda + (i) ]

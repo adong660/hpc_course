@@ -1,5 +1,4 @@
-/* OpenMP implementation of multi-threaded block matrix multiplication */
-/* Split the matrix into fixed size blocks */
+/* Block + jpi four element a time */
 #include "dgemm.h"
 
 #define A(i,j) a[ (j)*lda + (i) ]

@@ -1,12 +1,11 @@
-/* OpenMP implementation of multi-threaded block matrix multiplication */
-/* Split the matrix into fixed size blocks */
+/* Block + jip 16 elements a time */
 #include "dgemm.h"
 
 #define A(i,j) a[ (j)*lda + (i) ]
 #define B(i,j) b[ (j)*ldb + (i) ]
 #define C(i,j) c[ (j)*ldc + (i) ]
 
-#define BLOCK_SIZE 256
+#define BLOCK_SIZE 64
 
 inline static void naive_dgemm(int m, int n, int k, double *a, int lda, 
                                double *b, int ldb, double *c, int ldc);
