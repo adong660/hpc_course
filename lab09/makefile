@@ -1,5 +1,5 @@
-OLD  := MMult3
-NEW  := MMult6
+OLD  := MMult7
+NEW  := MMult8
 
 CC         := gcc
 LINKER     := $(CC)
@@ -7,7 +7,7 @@ CFLAGS     := -Wall -g -O1
 LDFLAGS    := -lm -L /opt/OpenBLAS/lib/ -lopenblas -fopenmp
 
 TEST       := test_MMult.o
-TEST_OBJ   := MMult3.o MMult5.o MMult6.o MMult_openblas.o
+TEST_OBJ   := MMult3.o MMult5.o MMult6.o MMult7.o MMult8.o MMult_openblas.o
 UTILS      := utils.o
 EXECUTABLE := test_MMult_old.x test_MMult_new.x
 
@@ -28,10 +28,17 @@ MMult5.o: MMult5.c dgemm.h
 MMult6.o: MMult6.c dgemm.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+MMult7.o: MMult7.c dgemm.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+MMult8.o: MMult8.c dgemm.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 MMult_openblas.o: MMult_openblas.c dgemm.h
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
 
-utils.o: utils.c utils.h dgemm.h MMult_openblas.o
+utils.o: utils.c utils.h dgemm.h
+	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
 
 test_MMult_old.x: $(TEST) $(OLD).o $(UTILS) parameters.h dgemm.h utils.h
 	$(LINKER) $(TEST) $(OLD).o $(UTILS) $(LDFLAGS) -o $@
@@ -60,6 +67,16 @@ time_new:
 	echo "version = '$(NEW)';" > output_$(NEW).m
 	echo $$OMP_NUM_THREADS
 	./test_MMult_new.x --time >> output_$(NEW).m
+	cp output_$(NEW).m output_new.m
+
+	python3 PlotAll.py
+
+test_new:
+	make all
+
+	echo "version = '$(NEW)';" > output_$(NEW).m
+	echo $$OMP_NUM_THREADS
+	./test_MMult_new.x --test >> output_$(NEW).m
 	cp output_$(NEW).m output_new.m
 
 	python3 PlotAll.py

@@ -3,11 +3,11 @@ import numpy as np
 
 # Indicate the number of floating point operations that can be executed
 # per clock cycle
-nflops_per_cycle = 1
+nflops_per_cycle = 2
 
 # Indicate the number of processors being used (in case you are using a
 # multicore or SMP)
-nprocessors = 2
+nprocessors = 1
 
 # Indicate the clock speed of the processor.  On a Linux machine this info
 # can be found in the file /proc/cpuinfo

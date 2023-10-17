@@ -3,7 +3,7 @@
 #include <time.h>
 #include <math.h>
 #include <sys/time.h>
-#include "dgemm.h"
+#include <cblas.h>
 
 #define A(i,j) a[ (j)*lda + (i) ]
 #define B(i,j) b[ (j)*ldb + (i) ]
@@ -32,8 +32,9 @@ double compare_matrices(int m, int n, double *a, int lda, double *b, int ldb) {
     return max_diff;
 }
 
-void REF_MMult(int m, int n, int k, double *a, int lda, double *b, int ldb, double *cref, int ldc) {
-    MY_MMult(m, n, k, a, lda, b, ldb, cref, ldc);
+void REF_MMult(int m, int n, int k, double *a, int lda, double *b, int ldb, double *c, int ldc) {
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+                m, n, k, 1.0, a, lda, b, ldb, 1.0, c, ldc);
 }
 
 double dclock() {
