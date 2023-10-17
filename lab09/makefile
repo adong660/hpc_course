@@ -1,4 +1,4 @@
-OLD  := MMult5
+OLD  := MMult3
 NEW  := MMult6
 
 CC         := gcc
@@ -7,7 +7,7 @@ CFLAGS     := -Wall -g -O1
 LDFLAGS    := -lm -L /opt/OpenBLAS/lib/ -lopenblas -fopenmp
 
 TEST       := test_MMult.o
-TEST_OBJ   := MMult5.o MMult6.o MMult_openblas.o
+TEST_OBJ   := MMult3.o MMult5.o MMult6.o MMult_openblas.o
 UTILS      := utils.o
 EXECUTABLE := test_MMult_old.x test_MMult_new.x
 
@@ -19,11 +19,14 @@ all:
 
 test_MMult.o: test_MMult.c parameters.h dgemm.h
 
+MMult3.o: MMult3.c dgemm.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 MMult5.o: MMult5.c dgemm.h
 	$(CC) $(CFLAGS) -fopenmp -c $< -o $@
 
 MMult6.o: MMult6.c dgemm.h
-	$(CC) $(CFLAGS) -fopenmp -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 MMult_openblas.o: MMult_openblas.c dgemm.h
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
@@ -47,6 +50,16 @@ test time:
 	echo "version = '$(NEW)';" > output_$(NEW).m
 	echo $$OMP_NUM_THREADS
 	./test_MMult_new.x --$@ >> output_$(NEW).m
+	cp output_$(NEW).m output_new.m
+
+	python3 PlotAll.py
+
+time_new:
+	make all
+
+	echo "version = '$(NEW)';" > output_$(NEW).m
+	echo $$OMP_NUM_THREADS
+	./test_MMult_new.x --time >> output_$(NEW).m
 	cp output_$(NEW).m output_new.m
 
 	python3 PlotAll.py
