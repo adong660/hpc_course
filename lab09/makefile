@@ -32,7 +32,7 @@ MMult7.o: MMult7.c dgemm.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 MMult8.o: MMult8.c dgemm.h
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -mavx2 -mfma -c $< -o $@
 
 MMult_openblas.o: MMult_openblas.c dgemm.h
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@

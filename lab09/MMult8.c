@@ -1,6 +1,7 @@
 /* OpenMP implementation of multi-threaded block matrix multiplication */
 /* Split the matrix into fixed size blocks */
 #include "dgemm.h"
+#include <immintrin.h>
 
 #define A(i,j) a[ (j)*lda + (i) ]
 #define B(i,j) b[ (j)*ldb + (i) ]
@@ -33,27 +34,30 @@ inline static void naive_dgemm(int m, int n, int k, double *a, int lda,
     for (j = 0; j <= n - 4; j += 4) {
         int i;
         for (i = 0; i <= m - 2; i += 2) {
-            register
-            double c_i0j0 = C(i, j),         c_i0j1 = C(i, j + 1),
-                   c_i0j2 = C(i, j + 2),     c_i0j3 = C(i, j + 3),
-                   c_i1j0 = C(i + 1, j),     c_i1j1 = C(i + 1, j + 1),
-                   c_i1j2 = C(i + 1, j + 2), c_i1j3 = C(i + 1, j + 3);
+            __m128d c_i01j0, c_i01j1, c_i01j2, c_i01j3;
+            c_i01j0 = _mm_loadu_pd(&C(i, j));
+            c_i01j1 = _mm_loadu_pd(&C(i, j + 1));
+            c_i01j2 = _mm_loadu_pd(&C(i, j + 2));
+            c_i01j3 = _mm_loadu_pd(&C(i, j + 3));
+
             for (int p = 0; p < k; p++) {
-                register
-                double a_i0p0 = A(i, p), a_i1p0 = A(i + 1, p);
-                c_i0j0 += a_i0p0 * B(p, j);
-                c_i0j1 += a_i0p0 * B(p, j + 1);
-                c_i0j2 += a_i0p0 * B(p, j + 2);
-                c_i0j3 += a_i0p0 * B(p, j + 3);
-                c_i1j0 += a_i1p0 * B(p, j);
-                c_i1j1 += a_i1p0 * B(p, j + 1);
-                c_i1j2 += a_i1p0 * B(p, j + 2);
-                c_i1j3 += a_i1p0 * B(p, j + 3);
+                __m128d b_p0j0, b_p0j1, b_p0j2, b_p0j3;
+                b_p0j0 = _mm_loaddup_pd(&B(p, j));
+                b_p0j1 = _mm_loaddup_pd(&B(p, j + 1));
+                b_p0j2 = _mm_loaddup_pd(&B(p, j + 2));
+                b_p0j3 = _mm_loaddup_pd(&B(p, j + 3));
+                __m128d a_i01p0;
+                a_i01p0 = _mm_loadu_pd(&A(i, p));
+
+                c_i01j0 = _mm_fmadd_pd(a_i01p0, b_p0j0, c_i01j0);
+                c_i01j1 = _mm_fmadd_pd(a_i01p0, b_p0j1, c_i01j1);
+                c_i01j2 = _mm_fmadd_pd(a_i01p0, b_p0j2, c_i01j2);
+                c_i01j3 = _mm_fmadd_pd(a_i01p0, b_p0j3, c_i01j3);
             }
-            C(i, j)         = c_i0j0, C(i, j + 1)     = c_i0j1,
-            C(i, j + 2)     = c_i0j2, C(i, j + 3)     = c_i0j3,
-            C(i + 1, j)     = c_i1j0, C(i + 1, j + 1) = c_i1j1,
-            C(i + 1, j + 2) = c_i1j2, C(i + 1, j + 3) = c_i1j3;
+            _mm_storeu_pd(&C(i, j),     c_i01j0);
+            _mm_storeu_pd(&C(i, j + 1), c_i01j1);
+            _mm_storeu_pd(&C(i, j + 2), c_i01j2);
+            _mm_storeu_pd(&C(i, j + 3), c_i01j3);
         }
         for (; i < m; i++) {
             register
