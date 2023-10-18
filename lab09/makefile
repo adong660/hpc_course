@@ -1,5 +1,5 @@
-OLD  := MMult7
-NEW  := MMult8
+OLD  := MMult8
+NEW  := MMult9
 
 CC         := gcc
 LINKER     := $(CC)
@@ -17,25 +17,28 @@ all:
 	rm -f *.x
 	make $(EXECUTABLE)
 
+
 test_MMult.o: test_MMult.c parameters.h dgemm.h
 
+
 MMult3.o: MMult3.c dgemm.h
-	$(CC) $(CFLAGS) -c $< -o $@
 
 MMult5.o: MMult5.c dgemm.h
 	$(CC) $(CFLAGS) -fopenmp -c $< -o $@
 
 MMult6.o: MMult6.c dgemm.h
-	$(CC) $(CFLAGS) -c $< -o $@
 
 MMult7.o: MMult7.c dgemm.h
-	$(CC) $(CFLAGS) -c $< -o $@
 
 MMult8.o: MMult8.c dgemm.h
 	$(CC) $(CFLAGS) -mavx2 -mfma -c $< -o $@
 
+MMult9.o: MMult9.c dgemm.h
+	$(CC) $(CFLAGS) -mavx2 -mfma -c $< -o $@
+
 MMult_openblas.o: MMult_openblas.c dgemm.h
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
+
 
 utils.o: utils.c utils.h dgemm.h
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@
@@ -45,6 +48,7 @@ test_MMult_old.x: $(TEST) $(OLD).o $(UTILS) parameters.h dgemm.h utils.h
 
 test_MMult_new.x: $(TEST) $(NEW).o $(UTILS) parameters.h dgemm.h utils.h
 	$(LINKER) $(TEST) $(NEW).o $(UTILS) $(LDFLAGS) -o $@
+
 
 test time:
 	make all
