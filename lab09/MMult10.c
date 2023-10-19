@@ -1,4 +1,4 @@
-/* Block + jip AVX2/FMA 16 elements a time */
+/* Block + AVX2/FMA 32 elements a time */
 #include "dgemm.h"
 #include <immintrin.h>
 

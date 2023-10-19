@@ -41,10 +41,10 @@ inline static void inner_dgemm(int m, int n, int k, double *a, int lda,
 
             for (int p = 0; p < k; p++) {
                 __m256d b_p0j0, b_p0j1, b_p0j2, b_p0j3;
-                b_p0j0 = _mm256_movedup_pd(_mm256_broadcast_pd(&B(p, j)));
-                b_p0j1 = _mm256_movedup_pd(_mm256_broadcast_pd(&B(p, j + 1)));
-                b_p0j2 = _mm256_movedup_pd(_mm256_broadcast_pd(&B(p, j + 2)));
-                b_p0j3 = _mm256_movedup_pd(_mm256_broadcast_pd(&B(p, j + 3)));
+                b_p0j0 = _mm256_movedup_pd(_mm256_broadcast_pd((__m128d *) &B(p, j)));
+                b_p0j1 = _mm256_movedup_pd(_mm256_broadcast_pd((__m128d *) &B(p, j + 1)));
+                b_p0j2 = _mm256_movedup_pd(_mm256_broadcast_pd((__m128d *) &B(p, j + 2)));
+                b_p0j3 = _mm256_movedup_pd(_mm256_broadcast_pd((__m128d *) &B(p, j + 3)));
                 __m256d a_i0123p0;
                 a_i0123p0 = _mm256_loadu_pd(&A(i, p));
 

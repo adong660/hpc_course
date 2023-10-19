@@ -1,4 +1,4 @@
-/* Block + jip AVX2/FMA 16 elements a time */
+/* Block + AVX2/FMA 32 elements a time (use alignment) */
 #include "dgemm.h"
 #include <immintrin.h>
 
@@ -11,18 +11,45 @@
 inline static void inner_dgemm(int m, int n, int k, double *a, int lda, 
                                double *b, int ldb, double *c, int ldc);
 
+inline static void unit_dgemm(int k, double *a, int lda,
+                              double *b, int ldb, double *c, int ldc);
+
 /* Routine for computing C = A * B + C */
 /* (m*n) = (m*k) * (k*n) */
 void MY_MMult(int m, int n, int k, double *a, int lda, 
               double *b, int ldb, double *c, int ldc) {
+    int lda_aligned = (m + 3) & 0xfffffffc;
+    double *a_aligned = (double *) aligned_alloc(32, lda_aligned * k * sizeof(double));
+    #define A_ALN(i, j) a_aligned[(i) + lda_aligned * (j)]
+    for (int j = 0; j < k; j++) {
+        for (int i = 0; i < m; i++) {
+            A_ALN(i, j) = A(i, j);
+        }
+    }
+    int ldc_aligned = (m + 3) & 0xfffffffc;
+    double *c_aligned = (double *) aligned_alloc(32, ldc_aligned * n * sizeof(double));
+    #define C_ALN(i, j) c_aligned[(i) + ldc_aligned * (j)]
+    for (int j = 0; j < n; j++) {
+        for (int i = 0; i < m; i++) {
+            C_ALN(i, j) = C(i, j);
+        }
+    }
+
     for (int j = 0; j < n; j += BLOCK_SIZE) {
         int len_j = BLOCK_SIZE < n - j ? BLOCK_SIZE : n - j;
         for (int p = 0; p < k; p += BLOCK_SIZE) {
             int len_p = BLOCK_SIZE < k - p ? BLOCK_SIZE : k - p;
             for (int i = 0; i < m; i += BLOCK_SIZE) {
                 int len_i = BLOCK_SIZE < m - i ? BLOCK_SIZE : m - i;
-                inner_dgemm(len_i, len_j, len_p, &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+                inner_dgemm(len_i, len_j, len_p, &A_ALN(i, p), lda_aligned,
+                            &B(p, j), ldb, &C_ALN(i, j), ldc_aligned);
             }
+        }
+    }
+
+    for (int j = 0; j < n; j++) {
+        for (int i = 0; i < m; i++) {
+            C(i, j) = C_ALN(i, j);
         }
     }
 }
@@ -33,44 +60,7 @@ inline static void inner_dgemm(int m, int n, int k, double *a, int lda,
     for (j = 0; j <= n - 4; j += 4) {
         int i;
         for (i = 0; i <= m - 8; i += 8) {
-            __m256d c_i0123j0, c_i0123j1, c_i0123j2, c_i0123j3,
-                    c_i4567j0, c_i4567j1, c_i4567j2, c_i4567j3;
-            c_i0123j0 = _mm256_loadu_pd(&C(i, j));
-            c_i0123j1 = _mm256_loadu_pd(&C(i, j + 1));
-            c_i0123j2 = _mm256_loadu_pd(&C(i, j + 2));
-            c_i0123j3 = _mm256_loadu_pd(&C(i, j + 3));
-            c_i4567j0 = _mm256_loadu_pd(&C(i + 4, j));
-            c_i4567j1 = _mm256_loadu_pd(&C(i + 4, j + 1));
-            c_i4567j2 = _mm256_loadu_pd(&C(i + 4, j + 2));
-            c_i4567j3 = _mm256_loadu_pd(&C(i + 4, j + 3));
-
-            for (int p = 0; p < k; p++) {
-                __m256d b_p0j0, b_p0j1, b_p0j2, b_p0j3;
-                b_p0j0 = _mm256_set1_pd(B(p, j));
-                b_p0j1 = _mm256_set1_pd(B(p, j + 1));
-                b_p0j2 = _mm256_set1_pd(B(p, j + 2));
-                b_p0j3 = _mm256_set1_pd(B(p, j + 3));
-                __m256d a_i0123p0, a_i4567p0;
-                a_i0123p0 = _mm256_loadu_pd(&A(i, p));
-                a_i4567p0 = _mm256_loadu_pd(&A(i + 4, p));
-
-                c_i0123j0 = _mm256_fmadd_pd(a_i0123p0, b_p0j0, c_i0123j0);
-                c_i0123j1 = _mm256_fmadd_pd(a_i0123p0, b_p0j1, c_i0123j1);
-                c_i0123j2 = _mm256_fmadd_pd(a_i0123p0, b_p0j2, c_i0123j2);
-                c_i0123j3 = _mm256_fmadd_pd(a_i0123p0, b_p0j3, c_i0123j3);
-                c_i4567j0 = _mm256_fmadd_pd(a_i4567p0, b_p0j0, c_i4567j0);
-                c_i4567j1 = _mm256_fmadd_pd(a_i4567p0, b_p0j1, c_i4567j1);
-                c_i4567j2 = _mm256_fmadd_pd(a_i4567p0, b_p0j2, c_i4567j2);
-                c_i4567j3 = _mm256_fmadd_pd(a_i4567p0, b_p0j3, c_i4567j3);
-            }
-            _mm256_storeu_pd(&C(i, j),     c_i0123j0);
-            _mm256_storeu_pd(&C(i, j + 1), c_i0123j1);
-            _mm256_storeu_pd(&C(i, j + 2), c_i0123j2);
-            _mm256_storeu_pd(&C(i, j + 3), c_i0123j3);
-            _mm256_storeu_pd(&C(i + 4, j),     c_i4567j0);
-            _mm256_storeu_pd(&C(i + 4, j + 1), c_i4567j1);
-            _mm256_storeu_pd(&C(i + 4, j + 2), c_i4567j2);
-            _mm256_storeu_pd(&C(i + 4, j + 3), c_i4567j3);
+            unit_dgemm(k, &A(i, 0), lda, &B(0, j), ldb, &C(i, j), ldc);
         }
         for (; i < m; i++) {
             register
@@ -95,4 +85,46 @@ inline static void inner_dgemm(int m, int n, int k, double *a, int lda,
             C(i, j) = c_ij;
         }
     }
+}
+
+inline static void unit_dgemm(int k, double *a, int lda,
+                              double *b, int ldb, double *c, int ldc) {
+    __m256d c_i0123j0, c_i0123j1, c_i0123j2, c_i0123j3,
+            c_i4567j0, c_i4567j1, c_i4567j2, c_i4567j3;
+    c_i0123j0 = _mm256_load_pd(&C(0, 0));
+    c_i0123j1 = _mm256_load_pd(&C(0, 1));
+    c_i0123j2 = _mm256_load_pd(&C(0, 2));
+    c_i0123j3 = _mm256_load_pd(&C(0, 3));
+    c_i4567j0 = _mm256_load_pd(&C(4, 0));
+    c_i4567j1 = _mm256_load_pd(&C(4, 1));
+    c_i4567j2 = _mm256_load_pd(&C(4, 2));
+    c_i4567j3 = _mm256_load_pd(&C(4, 3));
+
+    for (int p = 0; p < k; p++) {
+        __m256d b_p0j0, b_p0j1, b_p0j2, b_p0j3;
+        b_p0j0 = _mm256_set1_pd(B(p, 0));
+        b_p0j1 = _mm256_set1_pd(B(p, 1));
+        b_p0j2 = _mm256_set1_pd(B(p, 2));
+        b_p0j3 = _mm256_set1_pd(B(p, 3));
+        __m256d a_i0123p0, a_i4567p0;
+        a_i0123p0 = _mm256_load_pd(&A(0, p));
+        a_i4567p0 = _mm256_load_pd(&A(4, p));
+
+        c_i0123j0 = _mm256_fmadd_pd(a_i0123p0, b_p0j0, c_i0123j0);
+        c_i0123j1 = _mm256_fmadd_pd(a_i0123p0, b_p0j1, c_i0123j1);
+        c_i0123j2 = _mm256_fmadd_pd(a_i0123p0, b_p0j2, c_i0123j2);
+        c_i0123j3 = _mm256_fmadd_pd(a_i0123p0, b_p0j3, c_i0123j3);
+        c_i4567j0 = _mm256_fmadd_pd(a_i4567p0, b_p0j0, c_i4567j0);
+        c_i4567j1 = _mm256_fmadd_pd(a_i4567p0, b_p0j1, c_i4567j1);
+        c_i4567j2 = _mm256_fmadd_pd(a_i4567p0, b_p0j2, c_i4567j2);
+        c_i4567j3 = _mm256_fmadd_pd(a_i4567p0, b_p0j3, c_i4567j3);
+    }
+    _mm256_store_pd(&C(0, 0), c_i0123j0);
+    _mm256_store_pd(&C(0, 1), c_i0123j1);
+    _mm256_store_pd(&C(0, 2), c_i0123j2);
+    _mm256_store_pd(&C(0, 3), c_i0123j3);
+    _mm256_store_pd(&C(4, 0), c_i4567j0);
+    _mm256_store_pd(&C(4, 1), c_i4567j1);
+    _mm256_store_pd(&C(4, 2), c_i4567j2);
+    _mm256_store_pd(&C(4, 3), c_i4567j3);
 }

@@ -1,4 +1,4 @@
-/* Block + jip AVX2/FMA 16 elements a time */
+/* Block + AVX2/FMA 16 elements a time (use _mm256_set1_pd) */
 #include "dgemm.h"
 #include <immintrin.h>
 
