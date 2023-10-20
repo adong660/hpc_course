@@ -1,5 +1,5 @@
-OLD  := MMult10
-NEW  := MMult11
+OLD  := MMult_openblas
+NEW  := MMult12
 
 CC         := gcc
 LINKER     := $(CC)
@@ -9,7 +9,7 @@ LDFLAGS    := -lm -L /opt/OpenBLAS/lib/ -lopenblas -fopenmp
 TEST       := test_MMult.o
 TEST_OBJ   := MMult3.o MMult5.o MMult6.o \
               MMult7.o MMult8.o MMult9.o \
-			  MMult10.o MMult11.o \
+			  MMult10.o MMult11.o MMult12.o\
 			  MMult_openblas.o
 UTILS      := utils.o
 EXECUTABLE := test_MMult_old.x test_MMult_new.x
@@ -44,6 +44,9 @@ MMult10.o: MMult10.c dgemm.h
 
 MMult11.o: MMult11.c dgemm.h
 	$(CC) $(CFLAGS) -mavx2 -mfma -c $< -o $@
+
+MMult12.o: MMult12.c dgemm.h
+	$(CC) $(CFLAGS) -mavx2 -mfma -fopenmp -c $< -o $@
 
 MMult_openblas.o: MMult_openblas.c dgemm.h
 	$(CC) $(CFLAGS) -I /opt/OpenBLAS/include/ -c $< -o $@

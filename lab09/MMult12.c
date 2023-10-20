@@ -1,4 +1,4 @@
-/* Block + AVX2/FMA 32 elements a time (use alignment) */
+/* Block + AVX2/FMA 32 elements a time (modified block size) */
 #include "dgemm.h"
 #include <immintrin.h>
 
@@ -6,7 +6,11 @@
 #define B(i,j) b[ (j)*ldb + (i) ]
 #define C(i,j) c[ (j)*ldc + (i) ]
 
-#define BLOCK_SIZE 64
+#define Mc 64
+#define Nc 256
+#define Kc 64
+#define Mr 8
+#define Nr 4
 
 inline static void inner_dgemm(int m, int n, int k, double *a, int lda, 
                                double *b, int ldb, double *c, int ldc);
@@ -18,16 +22,16 @@ inline static void unit_dgemm(int k, double *a, int lda,
 /* (m*n) = (m*k) * (k*n) */
 void MY_MMult(int m, int n, int k, double *a, int lda, 
               double *b, int ldb, double *c, int ldc) {
-    int lda_aligned = (m + 3) & 0xfffffffc;
-    double *a_aligned = (double *) aligned_alloc(32, lda_aligned * k * sizeof(double));
+    int lda_aligned = (m + 7) & 0xfffffff8;
+    double *a_aligned = (double *) aligned_alloc(64, lda_aligned * k * sizeof(double));
     #define A_ALN(i, j) a_aligned[(i) + lda_aligned * (j)]
     for (int j = 0; j < k; j++) {
         for (int i = 0; i < m; i++) {
             A_ALN(i, j) = A(i, j);
         }
     }
-    int ldc_aligned = (m + 3) & 0xfffffffc;
-    double *c_aligned = (double *) aligned_alloc(32, ldc_aligned * n * sizeof(double));
+    int ldc_aligned = (m + 7) & 0xfffffff8;
+    double *c_aligned = (double *) aligned_alloc(64, ldc_aligned * n * sizeof(double));
     #define C_ALN(i, j) c_aligned[(i) + ldc_aligned * (j)]
     for (int j = 0; j < n; j++) {
         for (int i = 0; i < m; i++) {
@@ -35,12 +39,13 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
         }
     }
 
-    for (int j = 0; j < n; j += BLOCK_SIZE) {
-        int len_j = BLOCK_SIZE < n - j ? BLOCK_SIZE : n - j;
-        for (int p = 0; p < k; p += BLOCK_SIZE) {
-            int len_p = BLOCK_SIZE < k - p ? BLOCK_SIZE : k - p;
-            for (int i = 0; i < m; i += BLOCK_SIZE) {
-                int len_i = BLOCK_SIZE < m - i ? BLOCK_SIZE : m - i;
+    #pragma omp parallel for num_threads(16)
+    for (int j = 0; j < n; j += Nc) {
+        int len_j = Nc < n - j ? Nc : n - j;
+        for (int p = 0; p < k; p += Kc) {
+            int len_p = Kc < k - p ? Kc : k - p;
+            for (int i = 0; i < m; i += Mc) {
+                int len_i = Mc < m - i ? Mc : m - i;
                 inner_dgemm(len_i, len_j, len_p, &A_ALN(i, p), lda_aligned,
                             &B(p, j), ldb, &C_ALN(i, j), ldc_aligned);
             }
@@ -58,9 +63,9 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
 inline static void inner_dgemm(int m, int n, int k, double *a, int lda, 
                                double *b, int ldb, double *c, int ldc) {
     int j;
-    for (j = 0; j <= n - 4; j += 4) {
+    for (j = 0; j <= n - Nr; j += Nr) {
         int i;
-        for (i = 0; i <= m - 8; i += 8) {
+        for (i = 0; i <= m - Mr; i += Mr) {
             unit_dgemm(k, &A(i, 0), lda, &B(0, j), ldb, &C(i, j), ldc);
         }
         for (; i < m; i++) {
