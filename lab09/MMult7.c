@@ -1,4 +1,4 @@
-/* Block + jip 16 elements a time */
+/* Block + jip 8 elements a time */
 #include "dgemm.h"
 
 #define A(i,j) a[ (j)*lda + (i) ]

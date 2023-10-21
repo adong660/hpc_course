@@ -18,16 +18,24 @@ inline static void unit_dgemm(int k, double *a, int lda,
 /* (m*n) = (m*k) * (k*n) */
 void MY_MMult(int m, int n, int k, double *a, int lda, 
               double *b, int ldb, double *c, int ldc) {
-    int lda_aligned = (m + 3) & 0xfffffffc;
-    double *a_aligned = (double *) aligned_alloc(32, lda_aligned * k * sizeof(double));
+    int lda_aligned = (m + 7) & 0xfffffffc;
+    double *a_aligned = (double *) aligned_alloc(64, lda_aligned * k * sizeof(double));
     #define A_ALN(i, j) a_aligned[(i) + lda_aligned * (j)]
     for (int j = 0; j < k; j++) {
         for (int i = 0; i < m; i++) {
             A_ALN(i, j) = A(i, j);
         }
     }
-    int ldc_aligned = (m + 3) & 0xfffffffc;
-    double *c_aligned = (double *) aligned_alloc(32, ldc_aligned * n * sizeof(double));
+    int ldb_aligned = (m + 7) & 0xfffffffc;
+    double *b_aligned = (double *) aligned_alloc(64, ldb_aligned * n * sizeof(double));
+    #define B_ALN(i, j) b_aligned[(i) + ldb_aligned * (j)]
+    for (int j = 0; j < k; j++) {
+        for (int i = 0; i < m; i++) {
+            B_ALN(i, j) = B(i, j);
+        }
+    }
+    int ldc_aligned = (m + 7) & 0xfffffffc;
+    double *c_aligned = (double *) aligned_alloc(64, ldc_aligned * n * sizeof(double));
     #define C_ALN(i, j) c_aligned[(i) + ldc_aligned * (j)]
     for (int j = 0; j < n; j++) {
         for (int i = 0; i < m; i++) {
@@ -42,7 +50,7 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
             for (int i = 0; i < m; i += BLOCK_SIZE) {
                 int len_i = BLOCK_SIZE < m - i ? BLOCK_SIZE : m - i;
                 inner_dgemm(len_i, len_j, len_p, &A_ALN(i, p), lda_aligned,
-                            &B(p, j), ldb, &C_ALN(i, j), ldc_aligned);
+                            &B_ALN(p, j), ldb_aligned, &C_ALN(i, j), ldc_aligned);
             }
         }
     }
@@ -52,7 +60,7 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
             C(i, j) = C_ALN(i, j);
         }
     }
-    free(a_aligned); free(c_aligned);
+    free(a_aligned); free(b_aligned); free(c_aligned);
 }
 
 inline static void inner_dgemm(int m, int n, int k, double *a, int lda, 

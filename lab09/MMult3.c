@@ -20,46 +20,15 @@ inline static void naive_dgemm(int m, int n, int k, double *a, int lda,
 void MY_MMult(int m, int n, int k, double *a, int lda, 
                                    double *b, int ldb,
                                    double *c, int ldc) {
-    block_dgemm(m, n, k, a, lda, b, ldb, c, ldc);
-}
-
-inline static void block_dgemm(int m, int n, int k, double *a, int lda, 
-                        double *b, int ldb,
-                        double *c, int ldc) {
-    int i = 0, j = 0, p = 0;
-    for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
-        for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
-            for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
-                naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE,
-                            &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
+    for (int i = 0; i < m; i += BLOCK_SIZE) {
+        int len_i = BLOCK_SIZE < m - i ? BLOCK_SIZE : m - i;
+        for (int j = 0; j < n; j += BLOCK_SIZE) {
+            int len_j = BLOCK_SIZE < n - j ? BLOCK_SIZE : n - j;
+            for (int p = 0; p < k; p += BLOCK_SIZE) {
+                int len_p = BLOCK_SIZE < k - p ? BLOCK_SIZE : k - p;
+                naive_dgemm(len_i, len_j, len_p, &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
             }
-            naive_dgemm(BLOCK_SIZE, BLOCK_SIZE, k - p,
-                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
         }
-    }
-    for (j = 0; j <= n - BLOCK_SIZE; j += BLOCK_SIZE) {
-        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
-            naive_dgemm(m - i, BLOCK_SIZE, BLOCK_SIZE,
-                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
-        }
-        naive_dgemm(m - i, BLOCK_SIZE, k - p,
-                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
-    }
-    for (i = 0; i <= m - BLOCK_SIZE; i += BLOCK_SIZE) {
-        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
-            naive_dgemm(BLOCK_SIZE, n - j, BLOCK_SIZE,
-                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
-        }
-        naive_dgemm(BLOCK_SIZE, n - j, k - p,
-                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
-    }
-    {
-        for (p = 0; p <= k - BLOCK_SIZE; p += BLOCK_SIZE) {
-            naive_dgemm(m - i, n - j, BLOCK_SIZE,
-                        &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
-        }
-        naive_dgemm(m - i, n - j, k - p,
-                    &A(i, p), lda, &B(p, j), ldb, &C(i, j), ldc);
     }
 }
 

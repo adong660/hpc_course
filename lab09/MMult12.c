@@ -30,6 +30,14 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
             A_ALN(i, j) = A(i, j);
         }
     }
+    int ldb_aligned = (m + 7) & 0xfffffffc;
+    double *b_aligned = (double *) aligned_alloc(64, ldb_aligned * n * sizeof(double));
+    #define B_ALN(i, j) b_aligned[(i) + ldb_aligned * (j)]
+    for (int j = 0; j < k; j++) {
+        for (int i = 0; i < m; i++) {
+            B_ALN(i, j) = B(i, j);
+        }
+    }
     int ldc_aligned = (m + 7) & 0xfffffff8;
     double *c_aligned = (double *) aligned_alloc(64, ldc_aligned * n * sizeof(double));
     #define C_ALN(i, j) c_aligned[(i) + ldc_aligned * (j)]
@@ -39,7 +47,7 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
         }
     }
 
-    #pragma omp parallel for num_threads(16)
+    #pragma omp parallel for schedule(dynamic) num_threads(16)
     for (int j = 0; j < n; j += Nc) {
         int len_j = Nc < n - j ? Nc : n - j;
         for (int p = 0; p < k; p += Kc) {
@@ -47,7 +55,7 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
             for (int i = 0; i < m; i += Mc) {
                 int len_i = Mc < m - i ? Mc : m - i;
                 inner_dgemm(len_i, len_j, len_p, &A_ALN(i, p), lda_aligned,
-                            &B(p, j), ldb, &C_ALN(i, j), ldc_aligned);
+                            &B_ALN(p, j), ldb_aligned, &C_ALN(i, j), ldc_aligned);
             }
         }
     }
@@ -57,7 +65,7 @@ void MY_MMult(int m, int n, int k, double *a, int lda,
             C(i, j) = C_ALN(i, j);
         }
     }
-    free(a_aligned); free(c_aligned);
+    free(a_aligned); free(b_aligned); free(c_aligned);
 }
 
 inline static void inner_dgemm(int m, int n, int k, double *a, int lda, 
